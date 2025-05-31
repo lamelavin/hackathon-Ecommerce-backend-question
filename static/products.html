@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Products</title>
+</head>
+
+<body>
+    <h2>Products</h2>
+    <button id="addProductBtn" style="display:none;">Add Product (Admin)</button>
+    <button id="viewCartBtn" style="display:none;">View Cart</button>
+    <div id="productList"></div>
+
+    <script>
+        let isAdmin = false;
+
+        async function loadProducts() {
+            const res = await fetch('/list_products');
+            const products = await res.json();
+            const list = document.getElementById('productList');
+            list.innerHTML = "";
+            products.forEach(p => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <h3>${p.name}</h3>
+                    <p>${p.description}</p>
+                    <p>Price: ${p.price}</p>
+                    <img src="${p.image_url || ''}" alt="${p.name}" width="100"/>
+                    <button onclick="addToCart('${p.name}')">Add to Cart</button>
+                    ${isAdmin ? `<button onclick="deleteProduct('${p.name}')">Delete</button>` : ''}
+                    <hr/>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        async function addToCart(productName) {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("Please login first.");
+                return;
+            }
+            const res = await fetch('/add_to_cart/' + productName, {
+                method: 'PUT',
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        async function deleteProduct(productName) {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("You must be logged in as admin to delete.");
+                return;
+            }
+
+            const confirmed = confirm(`Are you sure you want to delete "${productName}"?`);
+            if (!confirmed) return;
+
+            const res = await fetch('/delete_product', {
+                method: 'DELETE',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ name: productName })
+            });
+
+            const data = await res.json();
+            alert(data.message);
+            loadProducts(); // Reload the list after deletion
+        }
+
+        async function checkAdmin() {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+
+                if (payload.role === 'admin') {
+                    isAdmin = true;
+                    document.getElementById('addProductBtn').style.display = 'inline';
+                    document.getElementById('addProductBtn').onclick = () => window.location.href = 'add_product.html';
+                }
+
+                document.getElementById('viewCartBtn').style.display = 'inline';
+                document.getElementById('viewCartBtn').onclick = () => window.location.href = 'cart.html';
+
+            } catch (e) {
+                console.error("Invalid token.");
+            }
+        }
+
+        checkAdmin().then(loadProducts);
+    </script>
+</body>
+
+</html>

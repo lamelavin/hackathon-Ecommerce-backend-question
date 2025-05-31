@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Cart</title>
+</head>
+<body>
+    <h2>Your Cart</h2>
+    <div id="cartItems"></div>
+    <button id="placeOrderBtn">Place Order</button>
+
+    <script>
+        async function loadCart() {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("Please login first.");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const res = await fetch('/view_cart', {
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            const cart = await res.json();
+            const container = document.getElementById("cartItems");
+            container.innerHTML = "";
+
+            if (cart.length === 0) {
+                container.innerHTML = "<p>Your cart is empty.</p>";
+                return;
+            }
+
+            cart.forEach(p => {
+                const div = document.createElement("div");
+                div.innerHTML = `
+                    <h3>${p.name}</h3>
+                    <p>${p.description}</p>
+                    <p>Price: ${p.price}</p>
+                    <img src="${p.image_url || ''}" alt="${p.name}" width="100"/>
+                    <hr/>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        document.getElementById("placeOrderBtn").addEventListener("click", async () => {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("Please login.");
+                return;
+            }
+
+            const res = await fetch('/place_order', {
+                method: 'POST',
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            const data = await res.json();
+            alert(data.message);
+            window.location.reload();
+        });
+
+        loadCart();
+    </script>
+</body>
+</html>
